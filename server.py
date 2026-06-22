@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import cgi
 import json
 import mimetypes
 import os
 import shutil
 import tempfile
+from email.parser import BytesParser
+from email.policy import default
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -53,20 +55,11 @@ class AutomationHandler(BaseHTTPRequestHandler):
             self.send_json({"error": f"Processing failed: {exc}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def handle_process_request(self) -> None:
-        form = cgi.FieldStorage(
-            fp=self.rfile,
-            headers=self.headers,
-            environ={
-                "REQUEST_METHOD": "POST",
-                "CONTENT_TYPE": self.headers.get("Content-Type", ""),
-            },
-        )
-
-        file_field = form["file"] if "file" in form else None
-        if file_field is None or not getattr(file_field, "filename", ""):
+        upload = self.parse_uploaded_file()
+        if upload is None:
             raise ValueError("Please upload an Excel file first.")
 
-        filename = Path(file_field.filename).name
+        filename, file_bytes = upload
         if Path(filename).suffix.lower() != ".xlsx":
             raise ValueError("Only .xlsx files are supported right now.")
 
@@ -76,7 +69,7 @@ class AutomationHandler(BaseHTTPRequestHandler):
             output_path = temp_path / DOWNLOAD_FILENAME
 
             with input_path.open("wb") as output_stream:
-                shutil.copyfileobj(file_field.file, output_stream)
+                output_stream.write(file_bytes)
 
             processed_file = process_workbook(input_path, output_path)
             payload = processed_file.read_bytes()
@@ -114,6 +107,33 @@ class AutomationHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def parse_uploaded_file(self) -> tuple[str, bytes] | None:
+        content_type = self.headers.get("Content-Type", "")
+        content_length = int(self.headers.get("Content-Length", "0"))
+        if "multipart/form-data" not in content_type or content_length <= 0:
+            return None
+
+        body = self.rfile.read(content_length)
+        message = BytesParser(policy=default).parsebytes(
+            b"Content-Type: " + content_type.encode("utf-8") + b"\r\n\r\n" + body
+        )
+
+        for part in message.iter_parts():
+            if part.get_content_disposition() != "form-data":
+                continue
+
+            if part.get_param("name", header="content-disposition") != "file":
+                continue
+
+            filename = part.get_filename()
+            if not filename:
+                return None
+
+            payload = part.get_payload(decode=True) or b""
+            return Path(filename).name, payload
+
+        return None
 
 
 def run_server() -> None:
