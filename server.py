@@ -3,6 +3,7 @@ from __future__ import annotations
 import cgi
 import json
 import mimetypes
+import os
 import shutil
 import tempfile
 from http import HTTPStatus
@@ -15,8 +16,8 @@ from processor import process_workbook
 
 ROOT_DIR = Path(__file__).resolve().parent
 STATIC_DIR = ROOT_DIR / "static"
-HOST = "127.0.0.1"
-PORT = 8000
+HOST = "0.0.0.0"
+PORT = int(os.environ.get("PORT", "8000"))
 DOWNLOAD_FILENAME = "Maersk Rates Output.xlsx"
 
 

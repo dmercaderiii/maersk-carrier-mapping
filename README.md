@@ -19,6 +19,21 @@ python server.py
 
 Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
+## Deploy on Render
+
+This app is ready for Render.
+
+1. Push the latest code to GitHub.
+2. In Render, create a new `Web Service`.
+3. Connect the repository `dmercaderiii/maersk-carrier-mapping`.
+4. Render can use the included [render.yaml](C:/Users/Dimidim/OneDrive%20-%20Freight%20Right%20Global%20Logistics/Desktop/Automation%20Projects/Maersk%20Automation/render.yaml), or you can enter these settings manually:
+   - Runtime: `Python`
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `python server.py`
+5. Deploy.
+
+The server automatically binds to Render's `PORT` environment variable.
+
 ## Notes
 
 - Input format currently supports `.xlsx`.

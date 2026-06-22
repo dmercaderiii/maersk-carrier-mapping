@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: maersk-carrier-mapping
+    runtime: python
+    repo: https://github.com/dmercaderiii/maersk-carrier-mapping
+    branch: main
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    autoDeployTrigger: commit
